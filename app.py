@@ -1,18 +1,32 @@
-# app.py -> loan_prediction.py로 학습된 모델을 predictor.py에서 불러와 사용
+# app.py
 
 from fastapi import FastAPI
 from schemas import PredictRequest, PredictResponse
 from predictor import predict_loan
 from utils import register_exception_handlers
+import logging
 
-app = FastAPI(title="Loan Approval Prediction API")
+# 기본 로깅 설정
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# FastAPI 앱 생성
+app = FastAPI()
+
+# 예외 처리 등록
 register_exception_handlers(app)
 
-@app.get("/")
-def root():
-    return {"message": "Loan Approval API is running"}
-
+# 대출 승인 예측 엔드포인트
 @app.post("/predict", response_model=PredictResponse)
-def predict(req: PredictRequest):  # /predict POST 요청을 받으면 predictor.py의 predict_loan() 호출
-    data = req.dict()
-    return predict_loan(data)
+async def predict(request: PredictRequest):
+    # 요청 데이터를 dict로 변환
+    data = request.dict()
+    logger.info(f"Received request: {data}")
+    
+    # 모델 예측 호출
+    result = predict_loan(data)
+    logger.info(f"Returning response: {result}")
+    
+    # JSON 형태로 반환
+    return result
+
