@@ -1,5 +1,4 @@
 # predictor.py
-
 import os
 import joblib
 import pandas as pd
@@ -35,6 +34,12 @@ CATEGORICAL_COLUMNS = [
     "Gender", "Married", "Education", "Self_Employed",
     "Property_Area", "Education_SelfEmployed"
 ]
+TRAIN_CSV = os.path.join(os.path.dirname(__file__), "data", "loan_train.csv")
+TEST_CSV = os.path.join(os.path.dirname(__file__), "data", "loan_test.csv")
+
+loan_data = pd.concat([pd.read_csv(TRAIN_CSV), pd.read_csv(TEST_CSV)], ignore_index=True)
+loan_data.set_index("Loan_ID", inplace=True)
+
 
 def predict_loan(features: dict) -> dict:
     try:
@@ -79,3 +84,42 @@ def predict_loan(features: dict) -> dict:
         print(traceback.format_exc())
         raise RuntimeError(f"Prediction failed: {e}")
 
+def predict_loan_by_id(loan_id: str) -> dict:
+    # 주어진 loan_id가 데이터프레임의 인덱스에 존재하지 않으면 오류 발생
+    if loan_id not in loan_data.index:
+        raise ValueError(f"Loan_ID '{loan_id}' not found")
+
+    # loan_id에 해당하는 행(row) 가져오기
+    row = loan_data.loc[loan_id]
+
+
+    # 개별 컬럼 값 추출 및 타입 변환
+    applicant_income = float(row["ApplicantIncome"])  # 신청인 소득
+    coapplicant_income = float(row["CoapplicantIncome"])  # 공동 신청인 소득
+    dependents = int(row["Dependents"])  # 부양가족 수
+    loan_amount = float(row["LoanAmount"])  # 대출금액
+    loan_term = float(row["Loan_Amount_Term"])  # 대출 기간
+    credit_history = int(row["Credit_History"])  # 신용 이력
+
+    # 모델 입력용 feature 딕셔너리 생성
+    features = {
+        "Gender": str(row["Gender"]),  # 성별 정보
+        "Married": str(row["Married"]),  # 결혼 여부
+        "Dependents": dependents,  # 부양가족 수
+        "Education": str(row["Education"]),  # 학력 정보
+        "Self_Employed": str(row["Self_Employed"]),  # 자영업 여부
+        "Property_Area": str(row["Property_Area"]),  # 거주지역
+        "LoanAmount": loan_amount,  # 대출금액
+        "Loan_Amount_Term": loan_term,  # 대출 기간
+        "TotalIncome": applicant_income + coapplicant_income,  # 총 소득
+        "Credit_History": credit_history,  # 신용 이력
+        "IncomePerDependent": (applicant_income + coapplicant_income) / (dependents + 1),
+            # 부양가족 1인당 소득
+        "LoanAmountToIncome": loan_amount / (applicant_income + coapplicant_income),
+            # 대출금 대비 소득 비율
+        "Education_SelfEmployed": f"{row['Education']}_{row['Self_Employed']}"
+            # 학력과 자영업 여부 결합
+    }
+
+    # features를 기반으로 대출 승인 여부 예측 후 결과 반환
+    return predict_loan(features)

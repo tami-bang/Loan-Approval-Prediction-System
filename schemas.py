@@ -1,5 +1,4 @@
 # schemas.py
-
 from pydantic import BaseModel, Field, conint, confloat, constr
 
 # 요청 데이터 구조 정의
@@ -30,6 +29,11 @@ class PredictRequest(BaseModel):
     LoanAmountToIncome: confloat(ge=0)
     # 학력과 자영업 결합 필드
     Education_SelfEmployed: constr(strip_whitespace=True)
+
+# Loan_ID 기반 예측 요청 데이터 구조 정의
+class PredictByLoanIDRequest(BaseModel):
+    # Loan_ID 기준 예측 요청
+    loan_id: str = Field(..., description="Loan_ID 기준 예측")
 
 # 응답 데이터 구조 정의
 class PredictResponse(BaseModel):
