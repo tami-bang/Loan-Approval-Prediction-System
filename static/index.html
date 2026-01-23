@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Loan Approval Checker</title>
+    <!-- Darkpan CSS -->
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>대출 승인 가능성 확인</h1>
+        <label for="loan_id">Loan ID:</label>
+        <input type="text" id="loan_id" placeholder="예: LP001002">
+        <button id="checkBtn">확인</button>
+
+        <div id="result" style="margin-top:20px;"></div>
+    </div>
+
+    <!-- Darkpan JS -->
+    <script src="/static/js/script.js"></script>
+
+    <script>
+        document.getElementById("checkBtn").addEventListener("click", async () => {
+            const loanId = document.getElementById("loan_id").value.trim();
+            if (!loanId) {
+                alert("Loan ID를 입력하세요.");
+                return;
+            }
+
+            const resultDiv = document.getElementById("result");
+            resultDiv.innerHTML = "조회 중...";
+
+            try {
+                const response = await fetch("/predict_by_loan_id", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ loan_id: loanId })
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    resultDiv.innerHTML = `오류 발생: ${errorText}`;
+                    return;
+                }
+
+                const data = await response.json();
+                resultDiv.innerHTML = `
+                    <p>승인 여부: ${data.approved ? "승인 가능" : "승인 불가"}</p>
+                    <p>승인 확률: ${(data.predict_loan * 100).toFixed(2)}%</p>
+                `;
+            } catch (err) {
+                resultDiv.innerHTML = `서버 통신 실패: ${err}`;
+            }
+        });
+    </script>
+</body>
+</html>
+
