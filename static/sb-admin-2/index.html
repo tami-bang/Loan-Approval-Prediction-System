@@ -1,0 +1,113 @@
+<!-- 파일: static/sb-admin-2/index.html -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loan Approval Checker</title>
+
+    <!-- SB Admin 2 CSS -->
+    <link href="/static/sb-admin-2/vendor/fontawesome-free/css/all.min.css" rel="stylesheet">
+    <link href="/static/sb-admin-2/css/sb-admin-2.min.css" rel="stylesheet">
+
+    <!-- 필요시 추가 CSS -->
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body id="page-top">
+
+<div class="container mt-5">
+
+    <!-- 대출 승인 조회 카드 -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">대출 승인 가능성 확인</h6>
+        </div>
+        <div class="card-body">
+            <div class="mb-3">
+                <label for="loan_id" class="form-label">Loan ID</label>
+                <input type="text" id="loan_id" class="form-control" placeholder="예: LP001002">
+            </div>
+            <button id="checkBtn" class="btn btn-primary">조회</button>
+
+            <!-- 결과 카드 -->
+            <div id="resultCard" class="card mt-3 shadow-sm d-none">
+                <div class="card-body">
+                    <h6>예측 결과</h6>
+                    <div id="result"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- SB Admin 2 JS -->
+<script src="/static/sb-admin-2/vendor/jquery/jquery.min.js"></script>
+<script src="/static/sb-admin-2/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="/static/sb-admin-2/vendor/jquery-easing/jquery.easing.min.js"></script>
+<script src="/static/sb-admin-2/js/sb-admin-2.min.js"></script>
+
+<!-- 대출 조회 JS -->
+<script>
+/* JS: 대출 승인 조회 및 개인정보 출력
+   1. Loan ID 입력 후 조회 버튼 클릭 이벤트 처리
+   2. 서버 POST 요청: /predict_by_loan_id
+   3. 승인 여부, 승인 확률, 개인정보 전체 표시
+   4. 오류 처리 포함
+*/
+document.getElementById("checkBtn").addEventListener("click", async () => {
+    const loanId = document.getElementById("loan_id").value.trim();  // Loan ID 입력값 가져오기
+    const resultCard = document.getElementById("resultCard");        // 결과 카드 div
+    const resultDiv = document.getElementById("result");             // 결과 내용 div
+
+    if (!loanId) {
+        alert("Loan ID를 입력하세요.");  // 입력값 없을 경우 경고
+        return;
+    }
+
+    resultCard.classList.remove("d-none");  // 결과 카드 표시
+    resultDiv.innerHTML = "조회 중...";       // 조회 중 표시
+
+    try {
+        // 서버로 POST 요청
+        const response = await fetch("/predict_by_loan_id", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ loan_id: loanId })
+        });
+
+        if (!response.ok) {
+			// 오류 발생 시
+            const errorText = await response.text();
+            resultDiv.innerHTML = `<span class="text-danger">오류 발생: ${errorText}</span>`;
+            return;
+        }
+
+        const data = await response.json();
+
+        // 승인 여부와 확률 표시
+        let html = `
+            <p>승인 여부: <strong>${data.approved ? "승인 가능" : "승인 불가"}</strong></p>
+            <p>승인 확률: <strong>${(data.predict_loan * 100).toFixed(2)}%</strong></p>
+            <hr>
+            <h6>개인 정보</h6>
+            <table class="table table-bordered table-sm">
+                <tbody>
+        `;
+
+        // 개인정보를 테이블로 표시, NaN/undefined/null은 '미입력' 처리
+		// undefined 대비 안전 처리
+        const personal_info = data.personal_info || {};
+        for (const [key, value] of Object.entries(personal_info)) {
+            let displayValue = (value === null || value === undefined || (typeof value === "number" && isNaN(value))) ? "미입력" : value;
+            html += `<tr><th>${key}</th><td>${displayValue}</td></tr>`;
+        }
+
+        html += `</tbody></table>`;
+        resultDiv.innerHTML = html;
+
+    } catch (err) {
+        resultDiv.innerHTML = `<span class="text-danger">서버 통신 실패: ${err}</span>`;
+    }
+});
+</script>

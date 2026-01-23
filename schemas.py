@@ -1,5 +1,6 @@
 # schemas.py
 from pydantic import BaseModel, Field, conint, confloat, constr
+from typing import Dict, Any
 
 # 요청 데이터 구조 정의
 class PredictRequest(BaseModel):
@@ -41,4 +42,5 @@ class PredictResponse(BaseModel):
     approved: int
     # 대출 승인 확률
     predict_loan: float
+    personal_info: Dict[str, Any]
 

@@ -2,57 +2,116 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Loan Approval Checker</title>
-    <!-- Darkpan CSS -->
-    <link rel="stylesheet" href="/static/css/style.css">
-</head>
-<body>
-    <div class="container">
-        <h1>대출 승인 가능성 확인</h1>
-        <label for="loan_id">Loan ID:</label>
-        <input type="text" id="loan_id" placeholder="예: LP001002">
-        <button id="checkBtn">확인</button>
 
-        <div id="result" style="margin-top:20px;"></div>
+    <!-- SB Admin 2 CSS -->
+    <link href="/sb-admin-2/vendor/fontawesome-free/css/all.min.css" rel="stylesheet">
+    <link href="/sb-admin-2/css/sb-admin-2.min.css" rel="stylesheet">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body id="page-top">
+
+<div class="container mt-5">
+
+    <h3 class="mb-4">대출 승인 가능성 조회</h3>
+
+    <!-- Loan_ID 입력 -->
+    <div class="mb-3">
+        <label for="loan_id" class="form-label">Loan ID</label>
+        <input type="text" id="loan_id" class="form-control" placeholder="예: LP001002">
+    </div>
+    <button id="checkBtn" class="btn btn-primary mb-4">조회</button>
+
+    <!-- 승인 결과 -->
+    <div id="resultCard" class="card shadow-sm d-none">
+        <div class="card-body">
+            <h5>예측 결과</h5>
+            <p id="approvalResult"></p>
+            <p id="approvalProb"></p>
+
+            <h5>개인정보</h5>
+            <table class="table table-bordered table-sm">
+                <thead>
+                    <tr>
+                        <th>컬럼</th>
+                        <th>값</th>
+                    </tr>
+                </thead>
+                <tbody id="personalInfoTable">
+                    <!-- JS에서 동적으로 삽입 -->
+                </tbody>
+            </table>
+        </div>
     </div>
 
-    <!-- Darkpan JS -->
-    <script src="/static/js/script.js"></script>
+</div>
 
-    <script>
-        document.getElementById("checkBtn").addEventListener("click", async () => {
-            const loanId = document.getElementById("loan_id").value.trim();
-            if (!loanId) {
-                alert("Loan ID를 입력하세요.");
-                return;
-            }
+<!-- JS -->
+<script src="/sb-admin-2/vendor/jquery/jquery.min.js"></script>
+<script src="/sb-admin-2/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="/sb-admin-2/vendor/jquery-easing/jquery.easing.min.js"></script>
+<script src="/sb-admin-2/js/sb-admin-2.min.js"></script>
 
-            const resultDiv = document.getElementById("result");
-            resultDiv.innerHTML = "조회 중...";
+<script>
+// 조회 버튼 클릭 이벤트
+document.getElementById("checkBtn").addEventListener("click", async () => {
+    const loanId = document.getElementById("loan_id").value.trim();
+    const resultCard = document.getElementById("resultCard");
+    const approvalResult = document.getElementById("approvalResult");
+    const approvalProb = document.getElementById("approvalProb");
+    const personalInfoTable = document.getElementById("personalInfoTable");
 
-            try {
-                const response = await fetch("/predict_by_loan_id", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ loan_id: loanId })
-                });
+    if (!loanId) {
+        alert("Loan ID를 입력하세요.");
+        return;
+    }
 
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    resultDiv.innerHTML = `오류 발생: ${errorText}`;
-                    return;
-                }
+    // 결과 카드 초기화
+    resultCard.classList.remove("d-none");
+    approvalResult.textContent = "조회 중...";
+    approvalProb.textContent = "";
+    personalInfoTable.innerHTML = "";
 
-                const data = await response.json();
-                resultDiv.innerHTML = `
-                    <p>승인 여부: ${data.approved ? "승인 가능" : "승인 불가"}</p>
-                    <p>승인 확률: ${(data.predict_loan * 100).toFixed(2)}%</p>
-                `;
-            } catch (err) {
-                resultDiv.innerHTML = `서버 통신 실패: ${err}`;
-            }
+    try {
+        const response = await fetch("/predict_by_loan_id", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ loan_id: loanId })
         });
-    </script>
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            approvalResult.textContent = `오류 발생: ${errorText}`;
+            return;
+        }
+
+        const data = await response.json();
+
+        // 승인 여부 & 확률 표시
+        approvalResult.innerHTML = `승인 여부: <strong>${data.approved ? "승인 가능" : "승인 불가"}</strong>`;
+        approvalProb.innerHTML = `승인 확률: <strong>${(data.predict_loan * 100).toFixed(2)}%</strong>`;
+
+        // 개인정보 테이블 채우기
+        for (const [key, value] of Object.entries(data.personal_info)) {
+            const row = document.createElement("tr");
+            const colName = document.createElement("td");
+            const colValue = document.createElement("td");
+            colName.textContent = key;
+            colValue.textContent = value ?? "정보 없음";
+            row.appendChild(colName);
+            row.appendChild(colValue);
+            personalInfoTable.appendChild(row);
+        }
+
+    } catch (err) {
+        approvalResult.textContent = `서버 통신 실패: ${err}`;
+    }
+});
+</script>
+
 </body>
 </html>
 
