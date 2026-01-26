@@ -9,7 +9,7 @@ FastAPI 기반 REST API 서버를 구현하는 것을 목표로 함.
 API 서버 시작 시 모델을 로드하여 예측 요청을 처리 함.
 
 # 2. Tech Stack
-- Python 3.x
+- Python 3.11.5
 - FastAPI
 - scikit-learn
 - joblib
